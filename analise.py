@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 CAMINHO_ARQUIVO = "chegadas-2025.csv"

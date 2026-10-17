@@ -60,13 +60,13 @@ SINONIMOS_PAISES = {
 
 
 def identificar_nulos(df):
-    print("\n=== VALORES NULOS ===")
+    print("\nVALORES NULOS:")
     print(df.isna().sum())
     print(f"Total de valores nulos: {df.isna().sum().sum()}")
 
 
 def identificar_duplicadas(df):
-    print("\n=== DUPLICATAS ===")
+    print("\nDUPLICATAS:")
 
     duplicadas = df[df.duplicated(keep=False)]
 
@@ -80,7 +80,7 @@ def identificar_duplicadas(df):
 
 
 def identificar_inconsistencias(df):
-    print("\n=== INCONSISTÊNCIAS ===")
+    print("\nINCONSISTENCIAS:")
 
     meses_invalidos = df[~df["mes"].isin(MESES)]
     vias_invalidas = df[~df["Via_de_acesso"].isin(VIAS_VALIDAS)]
@@ -106,7 +106,7 @@ def identificar_inconsistencias(df):
 
 
 def identificar_sinonimos(df):
-    print("\n=== SINÔNIMOS DE PAÍSES ===")
+    print("\nSINONIMOS DE PAISES:")
 
     paises = df["nome_pais_correto"]
     encontrados = {
@@ -116,7 +116,7 @@ def identificar_sinonimos(df):
     }
 
     for nome, sinonimo in encontrados.items():
-        print(f"{nome} -> {sinonimo}")
+        print(f"{nome} | {sinonimo}")
 
     if not encontrados:
         print("Nenhuma variante cadastrada foi encontrada.")
@@ -132,16 +132,12 @@ def identificar_sinonimos(df):
 def padronizar(df):
     df = df.copy()
 
-    colunas_texto = [
-        "Via_de_acesso", "UF", "nome_pais_correto", "mes"
-    ]
+    colunas_texto = ["Via_de_acesso", "UF", "nome_pais_correto", "mes"]
 
     for coluna in colunas_texto:
         df[coluna] = df[coluna].str.strip()
 
-    df["nome_pais_correto"] = df["nome_pais_correto"].replace(
-        SINONIMOS_PAISES
-    )
+    df["nome_pais_correto"] = df["nome_pais_correto"].replace(SINONIMOS_PAISES)
 
     return df
 
@@ -177,32 +173,20 @@ def montar_dimensoes(df):
 
 
 def montar_fato(df, dimensoes):
+
     dim_pais, dim_uf, dim_via, dim_mes = dimensoes
 
-    fato = df.groupby(
-        ["nome_pais_correto", "UF", "Via_de_acesso", "mes", "ano"],
-        as_index=False
-    )["Chegadas"].sum()
+    fato = df.groupby(["nome_pais_correto", "UF", "Via_de_acesso", "mes", "ano"],as_index=False)["Chegadas"].sum()
 
-    fato = fato.merge(
-        dim_pais, left_on="nome_pais_correto",
-        right_on="nome_pais"
-    )
-    fato = fato.merge(
-        dim_uf, left_on="UF", right_on="nome_uf"
-    )
-    fato = fato.merge(
-        dim_via, left_on="Via_de_acesso",
-        right_on="via_acesso"
-    )
-    fato = fato.merge(
-        dim_mes, left_on="mes", right_on="nome_mes"
-    )
+    fato = fato.merge(dim_pais, left_on="nome_pais_correto",right_on="nome_pais")
+    
+    fato = fato.merge(dim_uf, left_on="UF", right_on="nome_uf")
 
-    fato = fato[[
-        "id_pais", "id_uf", "id_via",
-        "id_mes", "ano", "Chegadas"
-    ]]
+    fato = fato.merge(dim_via, left_on="Via_de_acesso",right_on="via_acesso")
+
+    fato = fato.merge(dim_mes, left_on="mes", right_on="nome_mes")
+
+    fato = fato[["id_pais", "id_uf", "id_via","id_mes", "ano", "Chegadas"]]
 
     fato = fato.rename(columns={"Chegadas": "quantidade"})
     fato.insert(0, "id_chegada", range(1, len(fato) + 1))
@@ -211,6 +195,7 @@ def montar_fato(df, dimensoes):
 
 
 def salvar_tabelas(tabelas):
+
     os.makedirs(PASTA_SAIDA, exist_ok=True)
 
     for nome, tabela in tabelas.items():
@@ -225,7 +210,6 @@ def tratar():
     df = carregar_dados()
 
     print(f"Registros originais: {len(df)}")
-
     identificar_nulos(df)
     identificar_duplicadas(df)
     identificar_inconsistencias(df)
@@ -246,16 +230,14 @@ def tratar():
 
     salvar_tabelas(tabelas)
 
-    print("\n=== RESUMO ===")
+    print("\nRESUMO:")
     print(f"Registros originais: {len(df)}")
     print(f"Registros na tabela de chegadas: {len(fato)}")
 
     return tabelas
 
-
 def main():
     tratar()
-
 
 if __name__ == "__main__":
     main()
